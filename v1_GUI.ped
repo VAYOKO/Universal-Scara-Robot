@@ -1,0 +1,414 @@
+PrintWriter output;
+boolean isRecording = false;
+
+import controlP5.*; //import ControlP5 library
+import processing.serial.*;
+
+Serial port;
+
+int incomingser;
+Slider2D s;
+int pos;
+int posx;
+int posy;
+ControlP5 cp5; //create ControlP5 object
+PFont font;
+boolean f1;
+Knob myKnobA;
+float ang_togo1 = 0;
+float ang_togo2 = 0;
+float ang_togo3 = 0;
+float sum_ang1 = 0;
+float sum_ang2 = 0;
+float sum_ang3 = 0;
+String Datain;
+int rec_count;
+int Distance;
+int pos1;
+int pos2;
+int pos3;
+int pos4;
+int vaccum_state = 0;
+boolean en_motor = false;
+
+int m1Speed;
+int m2Speed;
+int m3Speed;
+int m4Speed;
+
+void setup() { //same as arduino program
+
+
+  frameRate(60);
+  smooth();
+  size(1000, 600);    //window size, (width, height)
+
+  printArray(Serial.list());   //prints all available serial ports
+
+  port = new Serial(this, "COM6", 115200);  //i have connected arduino to com3, it would be different in linux and mac os
+  port.bufferUntil('\n');
+  //lets add buton to empty window
+
+  cp5 = new ControlP5(this);
+  font = createFont("TR Larabiefont", 20);    // custom fonts for buttons and title
+
+  cp5.addButton("A1P")     //"red" is the name of button
+    .setPosition(700, 150)  //x and y coordinates of upper left corner of button
+    .setSize(80, 60)      //(width, height)
+    .setFont(font)
+    ;
+
+  cp5.addButton("A1M")     //"red" is the name of button
+    .setPosition(800, 150)  //x and y coordinates of upper left corner of button
+    .setSize(80, 60)      //(width, height)
+    .setFont(font)
+    ;
+
+  cp5.addButton("A2P")     //"red" is the name of button
+    .setPosition(700, 220)  //x and y coordinates of upper left corner of button
+    .setSize(80, 60)      //(width, height)
+    .setFont(font)
+    ;
+
+  cp5.addButton("A2M")     //"red" is the name of button
+    .setPosition(800, 220)  //x and y coordinates of upper left corner of button
+    .setSize(80, 60)      //(width, height)
+    .setFont(font)
+    ;
+
+  cp5.addButton("A3P")     //"red" is the name of button
+    .setPosition(700, 290)  //x and y coordinates of upper left corner of button
+    .setSize(80, 60)      //(width, height)
+    .setFont(font)
+    ;
+
+  cp5.addButton("A3M")     //"red" is the name of button
+    .setPosition(800, 290)  //x and y coordinates of upper left corner of button
+    .setSize(80, 60)      //(width, height)
+    .setFont(font)
+    ;
+  cp5.addToggle("en_motor")
+    .setPosition(450, 200)
+    .setSize(50, 20)
+    ;
+  cp5.addButton("REC")
+    .setPosition(500, 150)
+    .setSize(50, 20)
+    ;
+  cp5.addButton("PRE")
+    .setPosition(600, 150)
+    .setSize(50, 20)
+    ;
+  cp5.addButton("FOR")
+    .setPosition(600, 250)
+    .setSize(50, 20)
+    ;
+
+  cp5.addButton("GRAP")
+    .setPosition(650, 380)
+    .setSize(80, 30)
+    ;
+  cp5.addButton("RELEASE")
+    .setPosition(650, 420)
+    .setSize(80, 30)
+    ;
+  // ใน setup()
+  cp5.addButton("ADDSTEP")
+    .setPosition(900, 380)
+    .setSize(40, 30)
+    ;
+  cp5.addButton("SUBSTEP")
+    .setPosition(900, 400)
+    .setSize(40, 30)
+    ;
+
+  cp5.addButton("ADDSTEP1000")
+    .setPosition(850, 380)
+    .setSize(40, 30)
+    ;
+  cp5.addButton("SUBSTEP1000")
+    .setPosition(850, 400)
+    .setSize(40, 30)
+    ;
+
+  cp5.addButton("ADDSTEP10")
+    .setPosition(780, 380)
+    .setSize(40, 30)
+    ;
+  cp5.addButton("SUBSTEP10")
+    .setPosition(780, 400)
+    .setSize(40, 30)
+    ;
+  // ใน setup()
+  cp5.addButton("START_LOG")
+    .setPosition(500, 250)
+    .setSize(80, 30)
+    .setLabel("START LOG");
+
+  cp5.addButton("SAVE_LOG")
+    .setPosition(500, 300)
+    .setSize(80, 30)
+    .setLabel("SAVE LOG");
+
+  cp5.addButton("HOME")
+    .setPosition(500, 400)
+    .setSize(80, 30)
+    .setLabel("HOME");
+}
+void knob(int theValue) {
+  println(theValue);
+  port.write('X');
+  port.write(theValue);
+}
+void jog_panel() {
+  fill(200, 200, 200);
+  rect(600, 120, 800, 400);
+  fill(0, 0, 0);
+  text("JOG", 620, 145);
+  if (en_motor==true) {
+    fill(255, 40, 40);
+    text("MOTOR IS ON", 400, 90);
+    port.write('4');
+  } else {
+    fill(40, 255, 40);
+    text("MOTOR IS OFF", 400, 90);
+    port.write('3');
+  }
+}
+void parametor_panel() {
+
+  fill(200, 200, 200);
+  rect(60, 120, 380, 400);
+
+  //lets give title to our window
+  fill(255, 255, 100);               //text color (r, g, b)
+  textFont(font);
+  text("MANUAL CONTROL", 80, 50);  // ("text", x coordinate, y coordinat)
+  text("Make by Varis Vipavanich VAYO    IPRDEV.com", 500, 590);
+
+  fill(0, 0, 0);
+  text("CURRENT POSITION", 100, 140);  // ("text", x coordinate, y coordinat)
+  fill(0, 0, 0);
+  text("STP AXIS 1 :", 70, 160);
+  text("STP AXIS 2 :", 70, 180);
+  text("STP AXIS 3 :", 70, 200);
+
+  text("ANG 1 :", 260, 160);
+  text("ANG 2 :", 260, 180);
+  text("ANG 3 :", 260, 200);
+  text(sum_ang1, 330, 160);
+  text(sum_ang2, 330, 180);
+  text(sum_ang3, 330, 200);
+
+
+
+  text("°", 400, 160);
+  text("°", 400, 180);
+  text("mm", 400, 200);
+
+  text(pos1, 200, 160);
+  text(pos2, 200, 180);
+  text(pos3, 200, 200);
+
+  text("CURRENT SPEED", 100, 230);  // ("text", x coordinate, y coordinat)
+  fill(0, 0, 0);
+  text("SPD AXIS 1 :", 70, 250);
+  text("SPD AXIS 2 :", 70, 270);
+  text("SPD AXIS 3:", 70, 290);
+
+  text(m1Speed, 200, 250);
+  text(m2Speed, 200, 270);
+  text(m3Speed, 200, 290);
+
+  text("Angle and Distance per STEP", 100, 320);
+
+  text(ang_togo1, 100, 350);
+  text(ang_togo2, 100, 370);
+  text(ang_togo3, 100, 390);
+
+
+  text("°", 200, 350);
+  text("°", 200, 370);
+  text("mm", 200, 390);
+
+  text("Position :", 100, 460);
+  text(rec_count, 250, 460);
+  text("Current STEP :", 230, 350);
+  text(Distance, 380, 350);
+  text(vaccum_state, 400, 400);
+  if (f1==true) {
+    fill(255, 255, 255);
+    text("NULL", 100, 100);
+  } else if (f1 == false) {
+    fill(255, 255, 255);
+    text("NORMAL", 100, 100);
+  }
+}
+void draw() {  //same as loop in arduino
+  ang_togo1 = (Distance*0.225)/8.333333333333333;
+  ang_togo2 = 0.01765*Distance;
+  ang_togo3 = 0.00625*Distance;
+
+  background(38, 38, 38); // background color of window (r, g, b) or (0 to 255)
+  parametor_panel();
+  jog_panel();
+}
+// data support from the serial port
+
+
+void serialEvent(Serial port) {
+  Datain = port.readStringUntil('\n');
+
+  if (Datain != null) {
+    Datain = trim(Datain);
+    println(Datain);
+
+    int[] Datains = int(splitTokens(Datain, ","));
+    if (Datains.length >= 9) {  // ✅ ป้องกัน error
+      rec_count = Datains[0];
+      pos1 = Datains[1];
+      pos2 = Datains[2];
+      pos3 = Datains[3];
+      m1Speed = Datains[4];
+      m2Speed = Datains[5];
+      m3Speed = Datains[6];
+      Distance = Datains[7];
+      vaccum_state = Datains[8];
+    }
+
+    // ✅ ถ้ากำลังบันทึกข้อมูล ให้เขียนลงไฟล์
+  }
+}
+
+
+
+void START_LOG() {
+  // ตั้งชื่อไฟล์ใหม่ทุกครั้ง เช่น log_วันที่_เวลา.csv
+  String filename = "motion_log_" + year() + nf(month(), 2) + nf(day(), 2) + "_" +
+    nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2) + ".csv";
+
+  output = createWriter(filename);
+  output.println("rec_count,pos1,pos2,pos3,m1Speed,m2Speed,m3Speed,Distance,vaccum_state");
+  isRecording = true;
+  println("✅ Start recording to " + filename);
+}
+
+void SAVE_LOG() {
+  if (isRecording && output != null) {
+    output.flush();
+    output.close();
+    isRecording = false;
+    println("💾 Log file saved!");
+  } else {
+    println("⚠️ No recording in progress.");
+  }
+}
+
+
+
+//lets add some functions to our buttons
+//so whe you press any button, it sends perticular char over serial port
+void A1P() {
+  port.write('y');
+  sum_ang1+= ang_togo1;
+}
+
+
+void A1M() {
+  port.write('Y');
+  sum_ang1-= ang_togo1;
+}
+
+void A2P() {
+  port.write('i');
+
+  sum_ang2+= ang_togo2;
+}
+
+
+void A2M() {
+  port.write('I');
+
+  sum_ang2-= ang_togo2;
+}
+
+
+void A3P() {
+  port.write('p');
+  sum_ang3+= ang_togo3;
+}
+
+void A3M() {
+  port.write('P');
+  sum_ang3-= ang_togo3;
+}
+void REC() {
+  port.write('r');  // ส่งสัญญาณไป Arduino ตามเดิม
+
+  if (isRecording && output != null) {
+    rec_count++; // นับจำนวนครั้งที่บันทึก
+
+    // บันทึกค่าปัจจุบันของทุกตัวแปร
+    String line = rec_count + "," +
+      pos1 + "," + pos2 + "," + pos3 + "," +
+      m1Speed + "," + m2Speed + "," + m3Speed + "," +
+      Distance + "," + vaccum_state;
+
+    output.println(line);
+    output.flush(); // เขียนลงไฟล์ทันที
+
+    println("💾 Saved record #" + rec_count + " → " + line);
+  } else {
+    println("⚠️ Please press START_LOG first!");
+  }
+}
+
+
+void FOR() {
+  port.write('v');
+}
+void PRE() {
+  port.write('V');
+}
+
+
+void GRAP() {
+  port.write('n');
+  print("Grap");
+}
+
+void RELEASE() {
+  port.write('N');
+  print("Relaese");
+}
+
+
+void ADDSTEP() {
+  port.write('b');
+}
+
+void SUBSTEP() {
+  port.write('B');
+}
+
+
+void ADDSTEP1000() {
+  port.write('a');
+}
+
+void SUBSTEP1000() {
+  port.write('A');
+}
+
+void ADDSTEP10() {
+  port.write('c');
+}
+
+void SUBSTEP10() {
+  port.write('C');
+}
+
+
+void HOME(){
+ port.write('H'); 
+}
